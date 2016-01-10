@@ -1,4 +1,15 @@
-(function(d3) {
+/* Custom mods:
+Vasco 10/13/2014: Fixing bounds that cross the 24h line
+Vasco 06/20/2014: Fixing division by 0 when there's only one data value.
+Vasco 06/17/2014: Make it return an init function instead of an initialized variable. To allow cleaning of the cached data
+    which causes problems when applying different data and/or when not all the polygons have data assigned to.
+Vasco 06/13/2014: Added support for loading dependencies in AMD (encapsulate in define block, and export crosslet on bottom)
+*/
+define(['d3', 'leaflet','underscore','backbone'], function(d3) {
+
+return function () {
+
+    (function(d3) {
   var cie = d3.cie = {};
 
   cie.lab = function(l, a, b) {
@@ -897,6 +908,14 @@ crosslet.DataStore = (function() {
         _this.geometries = t.features;
       }
       _this.bounds = d3.geo.bounds(t);
+
+      // Custom mod: Vasco 10/13/2014 Fixing bounds that cross the 24h line
+      if (_this.bounds[0][0]>_this.bounds[1][0]) {
+        // At least one of the bounds crossed the 24h line
+          if (_this.bounds[0][0]>170) { _this.bounds[0][0]=-180; }//-=360
+          if (_this.bounds[1][0]<-170) { _this.bounds[1][0]=180; } //+=360
+      }
+
       _ref = _this.geometries;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         f = _ref[_i];
@@ -1127,6 +1146,10 @@ crosslet.PanelView = (function(_super) {
     this.cube = crossfilter(this.rows);
     getRounder = function(m1, m2, w, exp) {
       var scale, t;
+
+      // Custom mod: Vasco 06/20/2014: Fixing division by 0 when there's only one data value.
+      m1 = (m1==m2?(m1?0:-1):m1);
+
       t = 5 * (m2 - m1) / w;
       scale = d3.scale.pow().exponent(exp).range([m1 / t, m2 / t]).domain([m1 / t, m2 / t]);
       return function(d) {
@@ -1153,7 +1176,12 @@ crosslet.PanelView = (function(_super) {
       dg = d.group(getRounder(box.config.data.interval[0], box.config.data.interval[1], this.width - 20, box.config.data.exponent));
       box.graph.empty();
       yscale = d3.scale.linear().clamp(true).range([20, 0]);
-      chart = barChart().dimension(d).name_id(bName).group(dg).x(d3.scale.pow().exponent(box.config.data.exponent).domain(box.config.data.interval).rangeRound([0, this.width - 20])).y(yscale.copy()).ticks(box.config.data.ticks).tickFormat(box.config.format.axis(box.config)).fill(box.config.data.colorscale);
+
+      // Custom mod: Vasco 06/20/2014 - Prevent that the interval is ever zero
+      var xDomain = box.config.data.interval;
+      xDomain = (xDomain[1]==xDomain[0]?[(xDomain[0]?0:-1),xDomain[0]]:xDomain);
+
+      chart = barChart().dimension(d).name_id(bName).group(dg).x(d3.scale.pow().exponent(box.config.data.exponent).domain(xDomain).rangeRound([0, this.width - 20])).y(yscale.copy()).ticks(box.config.data.ticks).tickFormat(box.config.format.axis(box.config)).fill(box.config.data.colorscale);
       chart.on("brush", brushevent(box, this));
       chart.on("brushend", this.renderCubes);
       box.chart = chart;
@@ -1267,6 +1295,11 @@ crosslet.BoxView = (function(_super) {
     if (!this.config.filter) {
       this.config.filter = [_.min(_.values(this.data)), _.max(_.values(this.data))];
     }
+
+    // Custom mod: Vasco 06/20/2014 - Prevent that the interval is ever zero
+    var xDomain = this.config.data.interval;
+    xDomain = (xDomain[1]==xDomain[0]?[(xDomain[0]?0:-1),xDomain[0]]:xDomain);
+
     this.config.scale = d3.scale.pow().exponent(this.config.data.exponent).domain(this.config.data.interval).rangeRound([0, 20]);
     this.config.scale.name = "yes";
     this.render();
@@ -1519,3 +1552,9 @@ crosslet.MapView = (function(_super) {
   return MapView;
 
 })(Backbone.View);
+
+return crosslet;
+
+}
+
+});

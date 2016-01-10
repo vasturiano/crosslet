@@ -68,7 +68,7 @@
   width: auto;
   padding: 0px;
   padding-left: 4px;
-  height: 12px;
+  height: 14px;
   line-height: 13px;
   font-size: 12px;
   text-align: center;
@@ -253,7 +253,7 @@
   /* fill: inherit; */
 }
 .crosslet svg g.crosslet_geometry {
-  fill-opacity: 0.5;
+  fill-opacity: 0.7;
 }
 .crosslet svg g.crosslet_geometry path {
   fill: white;
